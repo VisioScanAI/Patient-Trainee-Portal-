@@ -1,0 +1,159 @@
+--- package.json ---
+```json
+{
+  "name": "visioscan-portal",
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "^13.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "@react-three/fiber": "^8.0.0",
+    "three": "^0.150.0",
+    "next-i18next": "^13.0.0"
+  }
+}
+```
+
+--- next.config.js ---
+```js
+module.exports = {
+  i18n: {
+    locales: ['en', 'fi'],
+    defaultLocale: 'en',
+  },
+  assetPrefix: 'https://cdn.yourdomain.com',
+};
+```
+
+--- public/locales/en/common.json ---
+```json
+{
+  "welcome": "Welcome to VisioScan AI",
+  "description": "Explore our 3D explainer model"
+}
+```
+
+--- public/locales/fi/common.json ---
+```json
+{
+  "welcome": "Tervetuloa VisioScan AI:hin",
+  "description": "Tutustu 3D-selittäjämalliin"
+}
+```
+
+--- utils/i18n.js ---
+```js
+const NextI18Next = require('next-i18next').default;
+
+module.exports = new NextI18Next({
+  defaultLanguage: 'en',
+  otherLanguages: ['fi'],
+  localePath: path.resolve('./public/locales'),
+});
+```
+
+--- pages/_app.js ---
+```js
+import App from 'next/app';
+import { appWithTranslation } from '../utils/i18n';
+import '../styles/global.css';
+
+class MyApp extends App {
+  render() {
+    const { Component, pageProps } = this.props;
+    return <Component {...pageProps} />;
+  }
+}
+
+export default appWithTranslation(MyApp);
+```
+
+--- pages/index.js ---
+```js
+import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
+import Layout from '../components/Layout';
+import Explainer3D from '../components/Explainer3D';
+
+export default function Home() {
+  return (
+    <Layout>
+      <Explainer3D />
+    </Layout>
+  );
+}
+
+export async function getServerSideProps({ locale }) {
+  return {
+    props: {
+      ...(await serverSideTranslations(locale, ['common'])),
+    },
+  };
+}
+```
+
+--- pages/[locale]/index.js ---
+```js
+export { default, getServerSideProps } from '../index';
+```
+
+--- components/Layout.js ---
+```js
+import Head from 'next/head';
+import Link from 'next/link';
+import { useRouter } from 'next/router';
+import { useTranslation } from 'next-i18next';
+
+export default function Layout({ children }) {
+  const { t } = useTranslation('common');
+  const { locales, locale } = useRouter();
+  return (
+    <>
+      <Head>
+        <title>{t('welcome')}</n        <link rel="icon" href="/favicon.ico" />
+      </Head>
+      <header>
+        <nav>
+          {locales.map(l => (
+            <Link key={l} href="/" locale={l}>
+              {l.toUpperCase()}
+            </Link>
+          ))}
+        </nav>
+      </header>
+      <main>
+        <h1>{t('welcome')}</h1>
+        <p>{t('description')}</p>
+        {children}
+      </main>
+    </>
+  );
+}
+```
+
+--- components/Explainer3D.js ---
+```js
+import React, { Suspense } from 'react';
+import { Canvas } from '@react-three/fiber';
+import { useGLTF } from '@react-three/drei';
+
+function Model() {
+  const gltf = useGLTF('/model/explainer.glb');
+  return <primitive object={gltf.scene} position={[0, 0, 0]} />;
+}
+
+export default function Explainer3D() {
+  return (
+    <Canvas camera={{ position: [0, 0, 5] }}>
+      <ambientLight />
+      <Suspense fallback={null}>
+        <Model />
+      </Suspense>
+    </Canvas>
+  );
+}
+```
